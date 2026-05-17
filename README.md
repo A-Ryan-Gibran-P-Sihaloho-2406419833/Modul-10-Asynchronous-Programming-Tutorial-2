@@ -77,3 +77,17 @@ Untuk menjalankan skenario Tugas Bonus ini, pastikan Anda **TIDAK** menjalankan 
    ```
 3. Peramban (*browser*) akan otomatis terbuka pada alamat **`http://localhost:8000`**.
 4. Silakan buka beberapa tab baru pada alamat tersebut untuk menguji fitur multi-user chat, daftar online users, dan fungsionalitas pengiriman tombol Enter yang semuanya dikelola di balik layar oleh server Rust!
+
+## 💡 Analisis Eksekusi dan Opini Personal
+
+### 1. *How it was done*
+Modifikasi dilakukan dengan mendesain ulang arsitektur penerimaan pesan di sisi server Rust. Alih-alih hanya membaca teks mentah, saya mengimplementasikan pustaka `serde` dan `serde_json` untuk mengubah *string* yang masuk menjadi *struct* Rust (`WebSocketMessage`) secara presisi. Server juga dikonfigurasi untuk menyimpan *state* setiap klien (berupa alamat IP dan *Username* dari *event* `Register`) ke dalam struktur data `HashMap` yang dilindungi oleh `Arc<Mutex>` agar aman diakses secara konkuren oleh ekosistem `tokio`.
+
+### 2. *Why it is a successful change*
+Perubahan ini sangat sukses karena server Rust mampu menggantikan server Node.js secara transparan ( *drop-in replacement* ) tanpa memerlukan satu pun perubahan kode di sisi klien (*Yew frontend*). Aplikasi klien tetap berjalan normal; daftar *user online* ter- *update* secara *real-time*, dan pertukaran pesan terjadi tanpa jeda. Ini membuktikan bahwa integrasi pertukaran data JSON lintas bahasa (Rust ke WebAssembly/JavaScript) dapat dieksekusi dengan sempurna melalui protokol WebSocket asalkan *contract data* (struktur JSON) yang disepakati sama.
+
+### 3. Opini: JS vs Rust Preference*
+Secara personal, saya lebih menyukai versi **Rust**.
+Meskipun versi Node.js (JavaScript) jauh lebih cepat untuk ditulis (*rapid prototyping*) dan kodenya lebih singkat karena tidak perlu mendefinisikan *struct* secara kaku, versi Rust memberikan **ketenangan pikiran (*peace of mind*)**.
+
+Dengan Rust, struktur data JSON dijamin oleh *compiler* melalui `serde`. Jika ada bentuk data yang tidak sesuai (misalnya *client* mengirim atribut yang salah), Rust akan langsung mendeteksinya pada tahap *Compile-Time* (atau menanganinya dengan aman lewat `Result/Option` di *runtime*). Sebaliknya, di Node.js, kesalahan format struktur objek berpotensi besar menyebabkan *runtime error* atau *undefined behavior* yang tiba-tiba membuat server *crash*. Selain itu, penanganan konkurensi dengan `tokio` di Rust terasa lebih kokoh untuk skalabilitas jangka panjang dibandingkan arsitektur *single-thread event-loop* milik Node.js.
