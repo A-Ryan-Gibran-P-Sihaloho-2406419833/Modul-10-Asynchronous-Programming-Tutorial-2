@@ -29,3 +29,51 @@ Ya, aplikasi masih menggunakan protokol websocket yang sama. Protokol ini didefi
 Untuk menambahkan informasi IP dan Port pengirim, saya melakukan modifikasi pada file `src/bin/server.rs`. Di dalam fungsi `handle_connection`, ketika server menerima pesan teks dari suatu client, server tidak lagi langsung mem-broadcast `text` mentah.
 
 Sebagai gantinya, saya memformat pesan baru menggunakan `format!("{addr}: {text}")`, di mana `addr` adalah `SocketAddr` (IP dan Port) milik client pengirim yang didapat saat koneksi pertama kali diterima. Pesan yang sudah diformat inilah yang kemudian dikirim ke `bcast_tx` untuk disiarkan ke seluruh client.
+
+# Tugas Bonus: Implementasi Asynchronous WebSocket Server Berbasis Rust untuk YewChat Client
+
+Bagian ini menjelaskan keberhasilan implementasi Tugas Bonus, yaitu menggantikan server WebSocket bawaan Node.js dari Tutorial 3 menggunakan server asinkronus berbasis Rust yang terintegrasi di dalam repositori ini.
+
+## 📝 Apa yang Sudah Dilakukan?
+
+Kita telah membuat sebuah berkas biner eksekusi (*binary executable*) baru bernama `src/bin/server_bonus.rs`. Berkas ini memodifikasi arsitektur dasar server multitafsir teks mentah pada Tutorial 2 agar mampu melakukan serialisasi dan deserialisasi data terstruktur **JSON** yang dikirimkan oleh aplikasi klien *frontend* Yew (Tutorial 3).
+
+Server baru ini menangani beberapa fungsionalitas kritis:
+1. **Pendaftaran Pengguna (*Client Registration*):** Menangkap tipe pesan `register` untuk menyimpan pemetaan antara alamat soket TCP (`SocketAddr`) klien dengan *username* pilihan mereka secara aman menggunakan *state* terbagi (`Arc<Mutex<HashMap<...>>>`).
+2. **Sinkronisasi Daftar Pengguna Online:** Mem-broadcast array nama seluruh pengguna yang aktif ke semua klien terhubung setiap kali ada pengguna yang bergabung atau memutuskan koneksi (*disconnect*).
+3. **Penyebaran Pesan Global (*Message Broadcasting*):** Mengemas ulang kiriman obrolan ke dalam objek `MessageData` struktural sebelum disebarkan ke seluruh klien yang terhubung secara asinkron.
+
+---
+
+## 🔍 Perbedaan Teknis Antar Server
+
+| Aspek Perbandingan | Server Tutorial 3 (Original) | Server Tutorial 2 (Original) | Server Tugas Bonus (Rust) |
+| :--- | :--- | :--- | :--- |
+| **Teknologi / Bahasa** | Node.js (JavaScript) | Rust (`tokio` + `tokio-tungstenite`) | Rust (`tokio` + `tokio-tungstenite`) |
+| **Format Data Jaringan** | JSON Berstruktur Kuat | Teks Mentah (*Raw Plain Text*) | JSON Berstruktur Kuat |
+| **Penanganan State Klien** | Array dinamis JavaScript | `HashMap` dilindungi oleh `Arc<Mutex>` | `HashMap` dengan pelacakan data kembar (*Tuple* berisi `Tx` dan *Username*) |
+| **Manajemen Memori** | Mengandalkan *Garbage Collector* | *Compile-time safety* (tanpa GC) | *Compile-time safety* dengan jaminan bebas *race condition* |
+
+---
+
+## 🚀 Panduan Menjalankan Aplikasi Secara Penuh (Panduan Asdos)
+
+Untuk menjalankan skenario Tugas Bonus ini, pastikan Anda **TIDAK** menjalankan server Node.js (`tutorial-3-server`) karena port `8080` akan digunakan sepenuhnya oleh server Rust ini.
+
+### Langkah 1: Jalankan Server Rust (Tugas Bonus)
+1. Buka terminal di dalam root direktori repositori ini (`tutorial-2-chat`).
+2. Eksekusi biner khusus server bonus menggunakan perintah Cargo:
+   ```bash
+   cargo run --bin server_bonus
+   ```
+3. Jika berhasil, terminal akan menampilkan log:
+   `🦀 Server Bonus (Rust) berjalan di: ws://127.0.0.1:8080`
+
+### Langkah 2: Jalankan Klien UI (Repositori Tutorial 3)
+1. Buka terminal baru dan arahkan ke direktori proyek klien Yew (`tutorial-3-client`).
+2. Jalankan *development server* menggunakan **Trunk** pada port `8000` (agar tidak bertabrakan dengan port server backend):
+   ```bash
+   trunk serve --port 8000 --open
+   ```
+3. Peramban (*browser*) akan otomatis terbuka pada alamat **`http://localhost:8000`**.
+4. Silakan buka beberapa tab baru pada alamat tersebut untuk menguji fitur multi-user chat, daftar online users, dan fungsionalitas pengiriman tombol Enter yang semuanya dikelola di balik layar oleh server Rust!
