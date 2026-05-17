@@ -20,3 +20,12 @@ Untuk mengubah port menjadi 8080, modifikasi dilakukan pada dua sisi karena kone
 
 **Protokol Websocket:**
 Ya, aplikasi masih menggunakan protokol websocket yang sama. Protokol ini didefinisikan dengan skema `ws://` (yang merupakan singkatan dari WebSocket over HTTP) pada *string* URI di file client saat memanggil `Uri::from_static("ws://127.0.0.1:8080")`. Sedangkan di sisi server, protokol ini dikelola oleh fungsi `ServerBuilder::new().accept(socket)` yang melakukan proses *handshake* untuk meng- *upgrade* koneksi TCP biasa menjadi koneksi WebSocket.
+
+# Eksperimen 2.3: Small changes. Add some information to client
+
+![Screenshot eksekusi penambahan IP dan Port](img/img_2.png)
+
+**Penjelasan Perubahan:**
+Untuk menambahkan informasi IP dan Port pengirim, saya melakukan modifikasi pada file `src/bin/server.rs`. Di dalam fungsi `handle_connection`, ketika server menerima pesan teks dari suatu client, server tidak lagi langsung mem-broadcast `text` mentah.
+
+Sebagai gantinya, saya memformat pesan baru menggunakan `format!("{addr}: {text}")`, di mana `addr` adalah `SocketAddr` (IP dan Port) milik client pengirim yang didapat saat koneksi pertama kali diterima. Pesan yang sudah diformat inilah yang kemudian dikirim ke `bcast_tx` untuk disiarkan ke seluruh client.
